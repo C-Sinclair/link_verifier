@@ -2,18 +2,17 @@ import argv
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{type Option, Some}
-import gleam/regexp
+import gleam/option.{Some}
 import gleam/result
-import simplifile
+import link_verifier/parser
 
 pub fn main() -> Nil {
   case argv.load().arguments {
     [filepath] -> {
       case
-        parse_file_for_links(filepath)
+        parser.parse_file_for_links(filepath)
         |> result.unwrap([])
-        |> find_missing_files()
+        |> parser.find_missing_files()
       {
         Some(bad_links) -> {
           let total =
@@ -27,39 +26,4 @@ pub fn main() -> Nil {
     }
     _ -> io.println("none")
   }
-}
-
-type LinksList =
-  List(String)
-
-type ParseFileError {
-  FileReadError(simplifile.FileError)
-}
-
-fn parse_file_for_links(filepath: String) -> Result(LinksList, ParseFileError) {
-  use contents <- result.try(
-    simplifile.read(filepath)
-    |> result.map_error(FileReadError),
-  )
-
-  let assert Ok(re) =
-    regexp.compile(
-      "\\[.*?\\]\\(((?!https?://).*?)\\)",
-      regexp.Options(case_insensitive: False, multi_line: True),
-    )
-
-  let links =
-    regexp.scan(re, contents)
-    |> list.filter_map(fn(match) {
-      case match.submatches {
-        [Some(path)] -> Ok(path)
-        _ -> Error(Nil)
-      }
-    })
-
-  Ok(links)
-}
-
-fn find_missing_files(links: LinksList) -> Option(LinksList) {
-  todo
 }
