@@ -24,6 +24,19 @@ pub fn cli_help_flag_prints_usage_test() {
   |> should.equal(True)
 }
 
+pub fn cli_version_flag_prints_version_test() {
+  let assert Ok(output) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "--version"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "link_verifier 1.0.0")
+  |> should.equal(True)
+}
+
 pub fn cli_supports_multiple_file_targets_test() {
   reset_tmp()
 

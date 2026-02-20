@@ -42,9 +42,11 @@ fn expand_target(target: String) -> Result(List(String), ExpandError) {
       )
 
       let matches = list.filter(files, fn(path) { wildcard_match(target, path) })
-      case matches {
+      use regular_files <- result.try(filter_regular_files(matches, target))
+
+      case regular_files {
         [] -> Error(TargetNotFound(target))
-        _ -> Ok(matches)
+        _ -> Ok(regular_files)
       }
     }
     False -> {
@@ -53,15 +55,44 @@ fn expand_target(target: String) -> Result(List(String), ExpandError) {
         Ok(False) -> {
           case simplifile.is_directory(target) {
             Ok(True) -> {
-              simplifile.get_files(target)
-              |> result.map_error(fn(error) {
-                TargetReadError(target: target, error: error)
-              })
+              use paths <- result.try(
+                simplifile.get_files(target)
+                |> result.map_error(fn(error) {
+                  TargetReadError(target: target, error: error)
+                }),
+              )
+
+              filter_regular_files(paths, target)
             }
             Ok(False) -> Error(TargetNotFound(target))
             Error(error) -> Error(TargetReadError(target: target, error: error))
           }
         }
+        Error(error) -> Error(TargetReadError(target: target, error: error))
+      }
+    }
+  }
+}
+
+fn filter_regular_files(
+  paths: List(String),
+  target: String,
+) -> Result(List(String), ExpandError) {
+  filter_regular_files_loop(paths, [], target)
+  |> result.map(list.reverse)
+}
+
+fn filter_regular_files_loop(
+  paths: List(String),
+  files: List(String),
+  target: String,
+) -> Result(List(String), ExpandError) {
+  case paths {
+    [] -> Ok(files)
+    [path, ..rest] -> {
+      case simplifile.is_file(path) {
+        Ok(True) -> filter_regular_files_loop(rest, [path, ..files], target)
+        Ok(False) -> filter_regular_files_loop(rest, files, target)
         Error(error) -> Error(TargetReadError(target: target, error: error))
       }
     }

@@ -6,10 +6,16 @@ import link_verifier/parser
 import link_verifier/resolver
 import simplifile
 
+const version = "1.0.0"
+
 pub fn main() -> Nil {
   case argv.load().arguments |> parse_arguments {
     ShowHelp -> {
       io.println(help_text())
+      halt(0)
+    }
+    ShowVersion -> {
+      io.println("link_verifier " <> version)
       halt(0)
     }
     ErrorMissingTargets -> {
@@ -22,6 +28,7 @@ pub fn main() -> Nil {
 
 type Command {
   ShowHelp
+  ShowVersion
   ErrorMissingTargets
   VerifyTargets(List(String))
 }
@@ -31,6 +38,8 @@ fn parse_arguments(args: List(String)) -> Command {
     [] -> ErrorMissingTargets
     ["-h"] -> ShowHelp
     ["--help"] -> ShowHelp
+    ["-v"] -> ShowVersion
+    ["--version"] -> ShowVersion
     _ -> VerifyTargets(args)
   }
 }
@@ -116,7 +125,11 @@ fn report(bad_links: List(parser.Link)) -> Nil {
 fn help_text() -> String {
   "usage: link_verifier <target> [target ...]\n"
   <> "\n"
-  <> "targets can be files, directories, or wildcard patterns such as *.md"
+  <> "targets can be files, directories, or wildcard patterns such as *.md\n"
+  <> "\n"
+  <> "options:\n"
+  <> "  -h, --help     show this help\n"
+  <> "  -v, --version  show version"
 }
 
 fn simplifile_error(e: simplifile.FileError) -> String {
