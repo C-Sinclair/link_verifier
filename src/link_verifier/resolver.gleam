@@ -63,7 +63,8 @@ fn expand_target(target: String) -> Result(List(String), ExpandError) {
   case has_wildcards(target) {
     True -> {
       let files = walk_all_files(".")
-      let matches = list.filter(files, fn(path) { wildcard_match(target, path) })
+      let matches =
+        list.filter(files, fn(path) { wildcard_match(target, path) })
       case matches {
         [] -> Error(TargetNotFound(target))
         _ -> Ok(matches)

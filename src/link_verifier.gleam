@@ -87,7 +87,10 @@ fn collect_missing_links(
         Error(parser.FileReadError(e)) -> Error(#(filepath, e))
         Ok(links) -> {
           let missing = parser.find_missing_files(links)
-          collect_missing_links(rest, prepend_links(list.reverse(missing), collected))
+          collect_missing_links(
+            rest,
+            prepend_links(list.reverse(missing), collected),
+          )
         }
       }
     }

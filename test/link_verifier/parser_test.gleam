@@ -32,7 +32,10 @@ pub fn parse_links_from_string_empty_string_test() {
 }
 
 pub fn parse_links_from_string_no_links_test() {
-  parser.parse_links_from_string("file.md", "just some plain text with no links")
+  parser.parse_links_from_string(
+    "file.md",
+    "just some plain text with no links",
+  )
   |> should.equal([])
 }
 
@@ -43,10 +46,7 @@ pub fn parse_links_from_string_tracks_line_numbers_test() {
 }
 
 pub fn parse_links_handles_balanced_parentheses_test() {
-  parser.parse_links_from_string(
-    "file.md",
-    "[sheet](files/Alembic (NEW).xlsx)",
-  )
+  parser.parse_links_from_string("file.md", "[sheet](files/Alembic (NEW).xlsx)")
   |> should.equal([
     Link(source_file: "file.md", line: 1, path: "files/Alembic (NEW).xlsx"),
   ])

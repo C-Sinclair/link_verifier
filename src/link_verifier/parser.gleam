@@ -1,8 +1,8 @@
 import gleam/list
+import gleam/option.{Some}
 import gleam/regexp
 import gleam/result
 import gleam/string
-import gleam/option.{Some}
 import simplifile
 
 pub type Link {

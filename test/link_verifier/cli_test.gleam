@@ -1,5 +1,5 @@
-import gleeunit/should
 import gleam/string
+import gleeunit/should
 import shellout
 import simplifile
 
@@ -43,15 +43,9 @@ pub fn cli_supports_multiple_file_targets_test() {
   let assert Ok(Nil) =
     simplifile.write(to: "test/.tmp_cli/existing.md", contents: "ok")
   let assert Ok(Nil) =
-    simplifile.write(
-      to: "test/.tmp_cli/a.md",
-      contents: "[ok](existing.md)",
-    )
+    simplifile.write(to: "test/.tmp_cli/a.md", contents: "[ok](existing.md)")
   let assert Ok(Nil) =
-    simplifile.write(
-      to: "test/.tmp_cli/b.md",
-      contents: "[bad](missing.md)",
-    )
+    simplifile.write(to: "test/.tmp_cli/b.md", contents: "[bad](missing.md)")
 
   let assert Error(#(2, output)) =
     shellout.command(
@@ -68,8 +62,7 @@ pub fn cli_supports_multiple_file_targets_test() {
 pub fn cli_supports_directory_targets_test() {
   reset_tmp()
 
-  let assert Ok(Nil) =
-    simplifile.create_directory_all("test/.tmp_cli/dir")
+  let assert Ok(Nil) = simplifile.create_directory_all("test/.tmp_cli/dir")
   let assert Ok(Nil) =
     simplifile.write(
       to: "test/.tmp_cli/dir/one.md",
@@ -84,15 +77,17 @@ pub fn cli_supports_directory_targets_test() {
       opt: [],
     )
 
-  string.contains(does: output, contain: "test/.tmp_cli/dir/one.md:1: broken link")
+  string.contains(
+    does: output,
+    contain: "test/.tmp_cli/dir/one.md:1: broken link",
+  )
   |> should.equal(True)
 }
 
 pub fn cli_supports_glob_targets_test() {
   reset_tmp()
 
-  let assert Ok(Nil) =
-    simplifile.create_directory_all("test/.tmp_cli/glob")
+  let assert Ok(Nil) = simplifile.create_directory_all("test/.tmp_cli/glob")
   let assert Ok(Nil) =
     simplifile.write(to: "test/.tmp_cli/glob/a.md", contents: "plain text")
   let assert Ok(Nil) =
@@ -109,15 +104,17 @@ pub fn cli_supports_glob_targets_test() {
       opt: [],
     )
 
-  string.contains(does: output, contain: "test/.tmp_cli/glob/b.md:1: broken link")
+  string.contains(
+    does: output,
+    contain: "test/.tmp_cli/glob/b.md:1: broken link",
+  )
   |> should.equal(True)
 }
 
 pub fn cli_resolves_relative_to_source_file_test() {
   reset_tmp()
 
-  let assert Ok(Nil) =
-    simplifile.create_directory_all("test/.tmp_cli/sub")
+  let assert Ok(Nil) = simplifile.create_directory_all("test/.tmp_cli/sub")
   let assert Ok(Nil) =
     simplifile.write(to: "test/.tmp_cli/sub/sibling.md", contents: "ok")
   let assert Ok(Nil) =
@@ -141,8 +138,7 @@ pub fn cli_resolves_relative_to_source_file_test() {
 pub fn cli_resolves_parent_directory_links_test() {
   reset_tmp()
 
-  let assert Ok(Nil) =
-    simplifile.create_directory_all("test/.tmp_cli/docs/sub")
+  let assert Ok(Nil) = simplifile.create_directory_all("test/.tmp_cli/docs/sub")
   let assert Ok(Nil) =
     simplifile.write(to: "test/.tmp_cli/docs/root.md", contents: "ok")
   let assert Ok(Nil) =
@@ -271,8 +267,7 @@ pub fn cli_accepts_directory_links_test() {
 pub fn cli_dot_directory_target_test() {
   reset_tmp()
 
-  let assert Ok(Nil) =
-    simplifile.create_directory_all("test/.tmp_cli/dotdir")
+  let assert Ok(Nil) = simplifile.create_directory_all("test/.tmp_cli/dotdir")
   let assert Ok(Nil) =
     simplifile.write(
       to: "test/.tmp_cli/dotdir/good.md",
@@ -306,10 +301,7 @@ pub fn cli_deduplicates_targets_test() {
   reset_tmp()
 
   let assert Ok(Nil) =
-    simplifile.write(
-      to: "test/.tmp_cli/dup.md",
-      contents: "[missing](gone.md)",
-    )
+    simplifile.write(to: "test/.tmp_cli/dup.md", contents: "[missing](gone.md)")
 
   let assert Error(#(2, output)) =
     shellout.command(
@@ -333,10 +325,7 @@ pub fn cli_shows_summary_line_test() {
       contents: "[a](missing-a.md)\n[b](missing-b.md)",
     )
   let assert Ok(Nil) =
-    simplifile.write(
-      to: "test/.tmp_cli/two.md",
-      contents: "[c](missing-c.md)",
-    )
+    simplifile.write(to: "test/.tmp_cli/two.md", contents: "[c](missing-c.md)")
 
   let assert Error(#(2, output)) =
     shellout.command(
@@ -354,10 +343,7 @@ pub fn cli_summary_singular_test() {
   reset_tmp()
 
   let assert Ok(Nil) =
-    simplifile.write(
-      to: "test/.tmp_cli/solo.md",
-      contents: "[x](nope.md)",
-    )
+    simplifile.write(to: "test/.tmp_cli/solo.md", contents: "[x](nope.md)")
 
   let assert Error(#(2, output)) =
     shellout.command(
