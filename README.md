@@ -15,7 +15,7 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 
 ## Install
 
-Download the latest release binary:
+Download the latest release (an Erlang escript — requires Erlang/OTP on PATH):
 
 ```sh
 gh release download --repo C-Sinclair/link_verifier --pattern 'link_verifier' --output ~/.local/bin/link_verifier --clobber
