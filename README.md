@@ -4,6 +4,15 @@ CLI tool to verify markdown-style local links such as `[text](./path/to/file.md)
 
 If a scanned file contains markdown-style links in docs or markdown-style comments, those paths must resolve to real files or `link_verifier` exits with an error.
 
+## Features
+
+- Resolves relative links from the **source file's directory**, not the working directory
+- Handles balanced parentheses in filenames, e.g. `[sheet](Onboarding Sheet (1).xlsx)`
+- Decodes percent-encoded URLs, e.g. `Scope%20Doc.md` resolves to `Scope Doc.md`
+- Recognises directory links like `[assessment](assessment/)`
+- Skips external links (`http://`, `https://`), `mailto:`, `tel:`, bare anchors (`#heading`), and query-only links (`?tab=...`)
+- Strips `#fragment` suffixes before checking file paths
+
 ## Build
 
 ```sh
