@@ -6,7 +6,7 @@ import link_verifier/parser
 import link_verifier/resolver
 import simplifile
 
-const version = "1.1.0"
+const version = "0.2.0"
 
 pub fn main() -> Nil {
   case argv.load().arguments |> parse_arguments {
