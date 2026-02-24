@@ -62,19 +62,11 @@ fn prepend_all(values: List(String), collected: List(String)) -> List(String) {
 fn expand_target(target: String) -> Result(List(String), ExpandError) {
   case has_wildcards(target) {
     True -> {
-      use files <- result.try(
-        simplifile.get_files(".")
-        |> result.map_error(fn(error) {
-          TargetReadError(target: ".", error: error)
-        }),
-      )
-
+      let files = walk_all_files(".")
       let matches = list.filter(files, fn(path) { wildcard_match(target, path) })
-      use regular_files <- result.try(filter_regular_files(matches, target))
-
-      case regular_files {
+      case matches {
         [] -> Error(TargetNotFound(target))
-        _ -> Ok(regular_files)
+        _ -> Ok(matches)
       }
     }
     False -> expand_literal_target(target)
@@ -86,53 +78,64 @@ fn expand_literal_target(target: String) -> Result(List(String), ExpandError) {
     Ok(True) -> Ok([target])
     _ ->
       case simplifile.is_directory(target) {
-        Ok(True) -> expand_directory(target)
+        Ok(True) -> {
+          let files = walk_md_files(target)
+          case files {
+            [] -> Error(TargetNotFound(target))
+            _ -> Ok(files)
+          }
+        }
         Ok(False) -> Error(TargetNotFound(target))
         Error(error) -> Error(TargetReadError(target: target, error: error))
       }
   }
 }
 
-fn expand_directory(target: String) -> Result(List(String), ExpandError) {
-  use paths <- result.try(
-    simplifile.get_files(target)
-    |> result.map_error(fn(error) {
-      TargetReadError(target: target, error: error)
-    }),
-  )
-
-  let md_files =
-    list.filter(paths, fn(path) { string.ends_with(path, ".md") })
-
-  case md_files {
-    [] -> Error(TargetNotFound(target))
-    _ -> Ok(md_files)
+fn walk_all_files(dir: String) -> List(String) {
+  case simplifile.read_directory(dir) {
+    Error(_) -> []
+    Ok(entries) ->
+      list.flat_map(entries, fn(entry) {
+        let path = case dir {
+          "." -> entry
+          _ -> dir <> "/" <> entry
+        }
+        case simplifile.is_directory(path) {
+          Ok(True) -> walk_all_files(path)
+          _ -> [path]
+        }
+      })
   }
 }
 
-fn filter_regular_files(
-  paths: List(String),
-  target: String,
-) -> Result(List(String), ExpandError) {
-  filter_regular_files_loop(paths, [], target)
-  |> result.map(list.reverse)
+fn walk_md_files(dir: String) -> List(String) {
+  case simplifile.read_directory(dir) {
+    Error(_) -> []
+    Ok(entries) ->
+      list.flat_map(entries, fn(entry) {
+        case is_hidden(entry) {
+          True -> []
+          False -> {
+            let path = case dir {
+              "." -> entry
+              _ -> dir <> "/" <> entry
+            }
+            case simplifile.is_directory(path) {
+              Ok(True) -> walk_md_files(path)
+              _ ->
+                case string.ends_with(path, ".md") {
+                  True -> [path]
+                  False -> []
+                }
+            }
+          }
+        }
+      })
+  }
 }
 
-fn filter_regular_files_loop(
-  paths: List(String),
-  files: List(String),
-  target: String,
-) -> Result(List(String), ExpandError) {
-  case paths {
-    [] -> Ok(files)
-    [path, ..rest] -> {
-      case simplifile.is_file(path) {
-        Ok(True) -> filter_regular_files_loop(rest, [path, ..files], target)
-        Ok(False) -> filter_regular_files_loop(rest, files, target)
-        Error(error) -> Error(TargetReadError(target: target, error: error))
-      }
-    }
-  }
+fn is_hidden(name: String) -> Bool {
+  string.starts_with(name, ".")
 }
 
 fn has_wildcards(value: String) -> Bool {

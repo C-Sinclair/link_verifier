@@ -33,7 +33,7 @@ pub fn cli_version_flag_prints_version_test() {
       opt: [],
     )
 
-  string.contains(does: output, contain: "link_verifier 1.0.0")
+  string.contains(does: output, contain: "link_verifier 1.1.0")
   |> should.equal(True)
 }
 
