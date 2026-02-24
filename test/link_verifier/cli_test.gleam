@@ -268,6 +268,109 @@ pub fn cli_accepts_directory_links_test() {
   True |> should.equal(True)
 }
 
+pub fn cli_dot_directory_target_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.create_directory_all("test/.tmp_cli/dotdir")
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/dotdir/good.md",
+      contents: "no links here",
+    )
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/dotdir/bad.md",
+      contents: "[missing](nope.md)",
+    )
+  // Also create a non-md file that should be ignored
+  let assert Ok(Nil) =
+    simplifile.write(to: "test/.tmp_cli/dotdir/data.json", contents: "{}")
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli/dotdir"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "bad.md:1: broken link")
+  |> should.equal(True)
+  // Should not mention the json file
+  string.contains(does: output, contain: "data.json")
+  |> should.equal(False)
+}
+
+pub fn cli_deduplicates_targets_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/dup.md",
+      contents: "[missing](gone.md)",
+    )
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli/dup.md", "test/.tmp_cli/dup.md"],
+      in: ".",
+      opt: [],
+    )
+
+  // Should only report the broken link once, not twice
+  string.contains(does: output, contain: "1 broken link in 1 file")
+  |> should.equal(True)
+}
+
+pub fn cli_shows_summary_line_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/one.md",
+      contents: "[a](missing-a.md)\n[b](missing-b.md)",
+    )
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/two.md",
+      contents: "[c](missing-c.md)",
+    )
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli/one.md", "test/.tmp_cli/two.md"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "3 broken links in 2 files")
+  |> should.equal(True)
+}
+
+pub fn cli_summary_singular_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/solo.md",
+      contents: "[x](nope.md)",
+    )
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli/solo.md"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "1 broken link in 1 file")
+  |> should.equal(True)
+}
+
 fn reset_tmp() -> Nil {
   case simplifile.delete("test/.tmp_cli") {
     Ok(Nil) -> Nil

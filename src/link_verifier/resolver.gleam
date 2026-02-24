@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/result
+import gleam/set
 import gleam/string
 import simplifile
 
@@ -8,9 +9,34 @@ pub type ExpandError {
   TargetReadError(target: String, error: simplifile.FileError)
 }
 
-pub fn expand_targets(targets: List(String)) -> Result(List(String), ExpandError) {
-  expand_targets_loop(targets, [])
-  |> result.map(list.reverse)
+pub fn expand_targets(
+  targets: List(String),
+) -> Result(List(String), ExpandError) {
+  use all <- result.try(
+    expand_targets_loop(targets, [])
+    |> result.map(list.reverse),
+  )
+  Ok(deduplicate(all))
+}
+
+fn deduplicate(paths: List(String)) -> List(String) {
+  deduplicate_loop(paths, set.new(), [])
+  |> list.reverse
+}
+
+fn deduplicate_loop(
+  paths: List(String),
+  seen: set.Set(String),
+  acc: List(String),
+) -> List(String) {
+  case paths {
+    [] -> acc
+    [path, ..rest] ->
+      case set.contains(seen, path) {
+        True -> deduplicate_loop(rest, seen, acc)
+        False -> deduplicate_loop(rest, set.insert(seen, path), [path, ..acc])
+      }
+  }
 }
 
 fn expand_targets_loop(
@@ -38,7 +64,9 @@ fn expand_target(target: String) -> Result(List(String), ExpandError) {
     True -> {
       use files <- result.try(
         simplifile.get_files(".")
-        |> result.map_error(fn(error) { TargetReadError(target: ".", error: error) }),
+        |> result.map_error(fn(error) {
+          TargetReadError(target: ".", error: error)
+        }),
       )
 
       let matches = list.filter(files, fn(path) { wildcard_match(target, path) })
@@ -49,28 +77,36 @@ fn expand_target(target: String) -> Result(List(String), ExpandError) {
         _ -> Ok(regular_files)
       }
     }
-    False -> {
-      case simplifile.is_file(target) {
-        Ok(True) -> Ok([target])
-        Ok(False) -> {
-          case simplifile.is_directory(target) {
-            Ok(True) -> {
-              use paths <- result.try(
-                simplifile.get_files(target)
-                |> result.map_error(fn(error) {
-                  TargetReadError(target: target, error: error)
-                }),
-              )
+    False -> expand_literal_target(target)
+  }
+}
 
-              filter_regular_files(paths, target)
-            }
-            Ok(False) -> Error(TargetNotFound(target))
-            Error(error) -> Error(TargetReadError(target: target, error: error))
-          }
-        }
+fn expand_literal_target(target: String) -> Result(List(String), ExpandError) {
+  case simplifile.is_file(target) {
+    Ok(True) -> Ok([target])
+    _ ->
+      case simplifile.is_directory(target) {
+        Ok(True) -> expand_directory(target)
+        Ok(False) -> Error(TargetNotFound(target))
         Error(error) -> Error(TargetReadError(target: target, error: error))
       }
-    }
+  }
+}
+
+fn expand_directory(target: String) -> Result(List(String), ExpandError) {
+  use paths <- result.try(
+    simplifile.get_files(target)
+    |> result.map_error(fn(error) {
+      TargetReadError(target: target, error: error)
+    }),
+  )
+
+  let md_files =
+    list.filter(paths, fn(path) { string.ends_with(path, ".md") })
+
+  case md_files {
+    [] -> Error(TargetNotFound(target))
+    _ -> Ok(md_files)
   }
 }
 

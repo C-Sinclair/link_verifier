@@ -6,7 +6,7 @@ import link_verifier/parser
 import link_verifier/resolver
 import simplifile
 
-const version = "1.0.0"
+const version = "0.1.0"
 
 pub fn main() -> Nil {
   case argv.load().arguments |> parse_arguments {
@@ -117,8 +117,33 @@ fn report(bad_links: List(parser.Link)) -> Nil {
           <> link.path,
         )
       })
+
+      let link_count = list.length(bad_links)
+      let file_count =
+        bad_links
+        |> list.map(fn(link) { link.source_file })
+        |> list.unique
+        |> list.length
+
+      io.println_error(
+        "\n"
+        <> int.to_string(link_count)
+        <> " broken "
+        <> pluralize(link_count, "link", "links")
+        <> " in "
+        <> int.to_string(file_count)
+        <> " "
+        <> pluralize(file_count, "file", "files"),
+      )
       halt(2)
     }
+  }
+}
+
+fn pluralize(count: Int, singular: String, plural: String) -> String {
+  case count {
+    1 -> singular
+    _ -> plural
   }
 }
 
