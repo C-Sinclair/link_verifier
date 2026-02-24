@@ -13,7 +13,16 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 - Skips external links (`http://`, `https://`), `mailto:`, `tel:`, bare anchors (`#heading`), and query-only links (`?tab=...`)
 - Strips `#fragment` suffixes before checking file paths
 
-## Build
+## Install
+
+Download the latest release binary:
+
+```sh
+gh release download --repo C-Sinclair/link_verifier --pattern 'link_verifier' --output ~/.local/bin/link_verifier --clobber
+chmod +x ~/.local/bin/link_verifier
+```
+
+## Build from source
 
 ```sh
 gleam build
