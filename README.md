@@ -16,18 +16,25 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 
 ## Install
 
-Download the latest release (an Erlang escript — requires Erlang/OTP on PATH):
+Download the latest release (native binary; no runtime dependency):
 
 ```sh
-gh release download --repo C-Sinclair/link_verifier --pattern 'link_verifier' --output ~/.local/bin/link_verifier --clobber
+# Example: macOS arm64
+gh release download --repo C-Sinclair/link_verifier --pattern 'link_verifier-macos-arm64' --output ~/.local/bin/link_verifier --clobber
 chmod +x ~/.local/bin/link_verifier
 ```
+
+Pick the asset matching your platform:
+
+- `link_verifier-macos-arm64`
+- `link_verifier-linux-x86_64`
+
+Homebrew support is planned after 1.0; for now, GitHub release assets are the fastest path.
 
 ## Build from source
 
 ```sh
-gleam build
-gleam run -m gleescript
+make build
 ```
 
 ## Usage
