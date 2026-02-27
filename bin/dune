@@ -1,0 +1,4 @@
+(executable
+ (name main)
+ (public_name link_verifier)
+ (libraries link_verifier_lib cmdliner))

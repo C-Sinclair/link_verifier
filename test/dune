@@ -1,0 +1,4 @@
+(tests
+ (names test_parser test_resolver test_cli)
+ (libraries link_verifier_lib alcotest re unix)
+ (deps %{bin:link_verifier}))
