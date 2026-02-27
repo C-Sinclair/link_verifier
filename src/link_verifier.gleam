@@ -2,11 +2,12 @@ import argv
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/regexp
 import link_verifier/parser
 import link_verifier/resolver
 import simplifile
 
-const version = "0.2.0"
+const version = "0.2.1"
 
 pub fn main() -> Nil {
   case argv.load().arguments |> parse_arguments {
@@ -22,7 +23,11 @@ pub fn main() -> Nil {
       io.println_error(help_text())
       halt(1)
     }
-    VerifyTargets(targets) -> verify_targets(targets)
+    ErrorMissingExceptPattern -> {
+      io.println_error("--except / -x requires a pattern argument")
+      halt(1)
+    }
+    VerifyTargets(targets, except) -> verify_targets(targets, except)
   }
 }
 
@@ -30,21 +35,40 @@ type Command {
   ShowHelp
   ShowVersion
   ErrorMissingTargets
-  VerifyTargets(List(String))
+  ErrorMissingExceptPattern
+  VerifyTargets(targets: List(String), except: List(String))
 }
 
 fn parse_arguments(args: List(String)) -> Command {
   case args {
     [] -> ErrorMissingTargets
-    ["-h"] -> ShowHelp
-    ["--help"] -> ShowHelp
-    ["-v"] -> ShowVersion
-    ["--version"] -> ShowVersion
-    _ -> VerifyTargets(args)
+    ["-h"] | ["--help"] -> ShowHelp
+    ["-v"] | ["--version"] -> ShowVersion
+    _ -> {
+      case split_args(args, [], []) {
+        Error(Nil) -> ErrorMissingExceptPattern
+        Ok(#([], _)) -> ErrorMissingTargets
+        Ok(#(targets, except)) -> VerifyTargets(targets, except)
+      }
+    }
   }
 }
 
-fn verify_targets(targets: List(String)) -> Nil {
+fn split_args(
+  args: List(String),
+  targets: List(String),
+  except: List(String),
+) -> Result(#(List(String), List(String)), Nil) {
+  case args {
+    [] -> Ok(#(list.reverse(targets), list.reverse(except)))
+    ["-x", pattern, ..rest] | ["--except", pattern, ..rest] ->
+      split_args(rest, targets, [pattern, ..except])
+    ["-x"] | ["--except"] -> Error(Nil)
+    [target, ..rest] -> split_args(rest, [target, ..targets], except)
+  }
+}
+
+fn verify_targets(targets: List(String), except: List(String)) -> Nil {
   case resolver.expand_targets(targets) {
     Error(resolver.TargetNotFound(target)) -> {
       io.println_error("target not found: " <> target)
@@ -60,7 +84,23 @@ fn verify_targets(targets: List(String)) -> Nil {
       )
       halt(1)
     }
-    Ok(filepaths) -> verify_files(filepaths)
+    Ok(filepaths) -> verify_files(filter_except(filepaths, except))
+  }
+}
+
+fn filter_except(
+  filepaths: List(String),
+  except_patterns: List(String),
+) -> List(String) {
+  case except_patterns {
+    [] -> filepaths
+    _ -> {
+      let compiled =
+        list.filter_map(except_patterns, fn(p) { regexp.from_string(p) })
+      list.filter(filepaths, fn(path) {
+        !list.any(compiled, fn(re) { regexp.check(re, path) })
+      })
+    }
   }
 }
 
@@ -151,13 +191,14 @@ fn pluralize(count: Int, singular: String, plural: String) -> String {
 }
 
 fn help_text() -> String {
-  "usage: link_verifier <target> [target ...]\n"
+  "usage: link_verifier <target> [target ...] [options]\n"
   <> "\n"
   <> "targets can be files, directories, or wildcard patterns such as *.md\n"
   <> "\n"
   <> "options:\n"
-  <> "  -h, --help     show this help\n"
-  <> "  -v, --version  show version"
+  <> "  -h, --help              show this help\n"
+  <> "  -v, --version           show version\n"
+  <> "  -x, --except <pattern>  exclude files matching regex (repeatable)"
 }
 
 fn simplifile_error(e: simplifile.FileError) -> String {

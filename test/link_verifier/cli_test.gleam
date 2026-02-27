@@ -33,7 +33,7 @@ pub fn cli_version_flag_prints_version_test() {
       opt: [],
     )
 
-  string.contains(does: output, contain: "link_verifier 0.2.0")
+  string.contains(does: output, contain: "link_verifier 0.2.1")
   |> should.equal(True)
 }
 
@@ -355,6 +355,128 @@ pub fn cli_summary_singular_test() {
 
   string.contains(does: output, contain: "1 broken link in 1 file")
   |> should.equal(True)
+}
+
+pub fn cli_except_excludes_matching_files_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.write(to: "test/.tmp_cli/keep.md", contents: "[bad](missing.md)")
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/skip.md",
+      contents: "[bad](also-missing.md)",
+    )
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli", "-x", "skip"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "keep.md:1: broken link")
+  |> should.equal(True)
+  string.contains(does: output, contain: "skip.md")
+  |> should.equal(False)
+}
+
+pub fn cli_except_long_flag_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/include.md",
+      contents: "[bad](missing.md)",
+    )
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/exclude.md",
+      contents: "[bad](also-missing.md)",
+    )
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli", "--except", "exclude"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "include.md:1: broken link")
+  |> should.equal(True)
+  string.contains(does: output, contain: "exclude.md")
+  |> should.equal(False)
+}
+
+pub fn cli_except_multiple_patterns_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.write(to: "test/.tmp_cli/a.md", contents: "[x](missing.md)")
+  let assert Ok(Nil) =
+    simplifile.write(to: "test/.tmp_cli/b.md", contents: "[x](missing.md)")
+  let assert Ok(Nil) =
+    simplifile.write(to: "test/.tmp_cli/c.md", contents: "[x](missing.md)")
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli", "-x", "/a\\.md$", "-x", "/b\\.md$"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "c.md:1: broken link")
+  |> should.equal(True)
+  string.contains(does: output, contain: "a.md")
+  |> should.equal(False)
+  string.contains(does: output, contain: "b.md")
+  |> should.equal(False)
+}
+
+pub fn cli_except_all_excluded_passes_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) =
+    simplifile.write(to: "test/.tmp_cli/only.md", contents: "[x](missing.md)")
+
+  let assert Ok(_output) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli/only.md", "-x", "only"],
+      in: ".",
+      opt: [],
+    )
+
+  True |> should.equal(True)
+}
+
+pub fn cli_except_regex_pattern_test() {
+  reset_tmp()
+
+  let assert Ok(Nil) = simplifile.create_directory_all("test/.tmp_cli/vendor")
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: "test/.tmp_cli/vendor/lib.md",
+      contents: "[x](missing.md)",
+    )
+  let assert Ok(Nil) =
+    simplifile.write(to: "test/.tmp_cli/app.md", contents: "[x](missing.md)")
+
+  let assert Error(#(2, output)) =
+    shellout.command(
+      run: "gleam",
+      with: ["run", "--", "test/.tmp_cli", "-x", "vendor/"],
+      in: ".",
+      opt: [],
+    )
+
+  string.contains(does: output, contain: "app.md:1: broken link")
+  |> should.equal(True)
+  string.contains(does: output, contain: "vendor")
+  |> should.equal(False)
 }
 
 fn reset_tmp() -> Nil {
