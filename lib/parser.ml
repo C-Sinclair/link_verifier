@@ -1,3 +1,4 @@
+(* Parse markdown-style links from file contents. *)
 type link = {
   source_file : string;
   line : int;
@@ -5,6 +6,7 @@ type link = {
 }
 
 let link_re =
+  (* Capture markdown link targets, allowing balanced parentheses inside. *)
   Re.compile (Re.Perl.re {|\[.*?\]\(([^()]*(?:\([^()]*\)[^()]*)*)\)|})
 
 let starts_with s prefix =
@@ -27,6 +29,7 @@ let should_check path =
   && not (path.[0] = '?')
 
 let parse_links_from_string ~source_file contents =
+  (* Line-by-line scanning keeps line numbers stable for error reporting. *)
   let lines = String.split_on_char '\n' contents in
   let links = ref [] in
   List.iteri

@@ -1,8 +1,10 @@
+(* CLI entrypoint: argument parsing and main verification flow. *)
 open Link_verifier_lib
 
 let version = "0.3.0"
 
 let filter_except filepaths except_patterns =
+  (* Compile user-provided regexes once; invalid patterns fail fast. *)
   match except_patterns with
   | [] -> filepaths
   | _ ->
@@ -21,6 +23,7 @@ let filter_except filepaths except_patterns =
       filepaths
 
 let verify targets except =
+  (* Expand targets into concrete files, then collect missing links. *)
   match Target_expander.expand_targets targets with
   | Error (Target_expander.Target_not_found target) ->
     Printf.eprintf "target not found: %s\n" target;

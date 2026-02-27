@@ -93,6 +93,15 @@ are the best fit for this specific problem shape. The rewrite eliminates the
 Erlang/OTP runtime dependency and reduces startup from ~110 ms to
 sub-millisecond.
 
+## Benchmark comparison
+
+Same dataset and script as the Gleam version (depth=3, files_per_level=100,
+BROKEN_RATE=0.35). Runs=15 on macOS 15.7.1 (arm64).
+
+- single-file-mixed avg: 112.39ms (Gleam) -> 3.39ms (OCaml) ~33x faster
+- directory-recursive-mixed avg: 151.00ms (Gleam) -> 9.58ms (OCaml) ~15.8x faster
+- wildcard-pattern-mixed avg: 173.11ms (Gleam) -> 5.84ms (OCaml) ~29.7x faster
+
 ## Consequences
 
 ### Positive

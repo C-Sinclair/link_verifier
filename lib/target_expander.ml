@@ -1,3 +1,4 @@
+(* Expand CLI targets (files/dirs/globs) into concrete markdown file paths. *)
 type expand_error =
   | Target_not_found of string
   | Target_read_error of string * string
@@ -31,6 +32,7 @@ let has_glob_chars s =
   loop 0
 
 let glob_to_re pattern =
+  (* Convert a shell-style glob to a full regex string. *)
   let buf = Buffer.create (String.length pattern * 2) in
   let len = String.length pattern in
   let i = ref 0 in
@@ -87,15 +89,23 @@ let rec walk_all_files dir =
   with Sys_error _ -> []
 
 let expand_glob pattern =
-  let re_str = glob_to_re pattern in
+  (* Normalize ./ prefixes so glob patterns match paths from walk_all_files. *)
+  let normalize path =
+    let len = String.length path in
+    if len >= 2 && String.sub path 0 2 = "./" then String.sub path 2 (len - 2)
+    else path
+  in
+  let normalized_pattern = normalize pattern in
+  let re_str = glob_to_re normalized_pattern in
   let re = Re.compile (Re.Perl.re re_str) in
-  let files = walk_all_files "." in
+  let files = walk_all_files "." |> List.map normalize in
   let matches = List.filter (fun path -> Re.execp re path) files in
   match matches with
   | [] -> Error (Target_not_found pattern)
   | _ -> Ok (List.sort String.compare matches)
 
 let expand_literal target =
+  (* Expand a file or directory into a list of markdown files. *)
   try
     if Sys.is_directory target then
       let files = walk_md_files target in

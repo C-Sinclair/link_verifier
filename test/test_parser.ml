@@ -1,3 +1,4 @@
+(* Parser and percent-decoding unit tests. *)
 open Link_verifier_lib
 
 let test_single_local_link () =

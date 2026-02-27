@@ -1,4 +1,6 @@
+(* Resolve and validate filesystem paths for parsed links. *)
 let percent_decode input =
+  (* Decode %XX sequences, keeping only printable ASCII replacements. *)
   let len = String.length input in
   let buf = Buffer.create len in
   let i = ref 0 in
@@ -35,6 +37,7 @@ let directory_of filepath =
   if dir = "" then "." else dir
 
 let resolve_path ~source_file link_path =
+  (* Paths resolve relative to the source file's directory. *)
   let decoded = percent_decode link_path in
   if String.length decoded > 0 && decoded.[0] = '/' then decoded
   else Filename.concat (directory_of source_file) decoded

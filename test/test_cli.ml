@@ -1,3 +1,4 @@
+(* CLI integration tests. *)
 let binary =
   let exe = Sys.executable_name in
   let test_dir = Filename.dirname exe in

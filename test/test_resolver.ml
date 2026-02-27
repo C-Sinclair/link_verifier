@@ -1,3 +1,4 @@
+(* Resolver unit tests. *)
 open Link_verifier_lib
 
 let with_tmp_dir f =

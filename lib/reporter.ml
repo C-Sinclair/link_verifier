@@ -1,3 +1,4 @@
+(* Emit broken-link diagnostics and compute exit code. *)
 let pluralize count singular plural =
   if count = 1 then singular else plural
 
@@ -21,4 +22,5 @@ let report_broken_links (bad_links : Parser.link list) =
       (pluralize link_count "link" "links")
       file_count
       (pluralize file_count "file" "files");
+    (* Exit code 2 signals broken links (per CLI contract). *)
     2
