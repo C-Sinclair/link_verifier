@@ -28,14 +28,14 @@ jobs:
           ocaml-compiler: "5.3"
 
       - run: opam install . --deps-only --with-test --yes
-      - run: opam exec -- dune build
-      - run: opam exec -- dune runtest
+      - run: opam exec -- make build
+      - run: opam exec -- make test
+      - run: opam exec -- make release
 
-      - name: Prepare artifact
+      - name: Rename for platform
         run: |
-          cp _build/default/bin/main.exe link_verifier-${{ matrix.target }}
-          chmod +x link_verifier-${{ matrix.target }}
-          shasum -a 256 link_verifier-${{ matrix.target }} > link_verifier-${{ matrix.target }}.sha256
+          mv link_verifier link_verifier-${{ matrix.target }}
+          mv link_verifier.sha256 link_verifier-${{ matrix.target }}.sha256
 
       - name: Verify binary
         run: ./link_verifier-${{ matrix.target }} --version
