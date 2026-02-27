@@ -4,15 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-BINARY="${BINARY:-$ROOT_DIR/link_verifier}"
+BINARY="${BINARY:-$ROOT_DIR/_build/default/bin/main.exe}"
 DEPTH="${DEPTH:-3}"
 FILES_PER_LEVEL="${FILES_PER_LEVEL:-100}"
 RUNS="${RUNS:-5}"
 SEED="${SEED:-42}"
 BROKEN_RATE="${BROKEN_RATE:-0.35}"
 
-gleam build >/dev/null
-gleam run -m gleescript >/dev/null
+dune build >/dev/null
 
 TMP_DIR="$(mktemp -d "$ROOT_DIR/.bench_tmp.XXXXXX")"
 TMP_REL="${TMP_DIR#"$ROOT_DIR"/}"

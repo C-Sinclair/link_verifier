@@ -10,28 +10,57 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+          - os: macos-latest
+            target: macos-arm64
+          - os: macos-13
+            target: macos-x86_64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: erlef/setup-beam@v1
+      - uses: ocaml/setup-ocaml@v3
         with:
-          otp-version: "28"
-          gleam-version: "1.14.0"
-          rebar3-version: "3"
+          ocaml-compiler: "5.3"
 
-      - run: gleam deps download
-      - run: gleam test
-      - run: gleam run -m gleescript
+      - run: opam install . --deps-only --with-test --yes
+      - run: opam exec -- make build
+      - run: opam exec -- make test
+      - run: opam exec -- make release
+
+      - name: Rename for platform
+        run: |
+          mv link_verifier link_verifier-${{ matrix.target }}
+          mv link_verifier.sha256 link_verifier-${{ matrix.target }}.sha256
 
       - name: Verify binary
-        run: ./link_verifier --version
+        run: ./link_verifier-${{ matrix.target }} --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: link_verifier-${{ matrix.target }}
+          path: |
+            link_verifier-${{ matrix.target }}
+            link_verifier-${{ matrix.target }}.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            ./link_verifier \
+            link_verifier-* \
+            --repo "${{ github.repository }}" \
             --title "${{ github.ref_name }}" \
             --generate-notes
