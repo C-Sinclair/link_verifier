@@ -12,6 +12,7 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 - Recognises directory links like `[assessment](assessment/)`
 - Skips external links (`http://`, `https://`), `mailto:`, `tel:`, bare anchors (`#heading`), and query-only links (`?tab=...`)
 - Strips `#fragment` suffixes before checking file paths
+- Exclude files or directories with `--except` / `-x` regex patterns (repeatable)
 
 ## Install
 
@@ -47,6 +48,14 @@ Targets can be:
 ```sh
 ./link_verifier --help
 ./link_verifier --version
+```
+
+### Excluding files
+
+Use `-x` / `--except` to skip files matching a regex pattern. The flag can be repeated:
+
+```sh
+./link_verifier docs/ -x vendor/ -x "test/fixtures"
 ```
 
 ### Exit codes
