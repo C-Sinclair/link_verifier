@@ -1,35 +1,43 @@
 (* Resolve and validate filesystem paths for parsed links. *)
+(** Decode percent-encoded sequences in a URL path (e.g. "%20" -> " ").
+    Only decodes printable ASCII (codes 32-126); non-printable or malformed
+    sequences are left as-is. *)
 let percent_decode input =
-  (* Decode %XX sequences, keeping only printable ASCII replacements. *)
   let len = String.length input in
   let buf = Buffer.create len in
-  let i = ref 0 in
-  while !i < len do
-    if
-      input.[!i] = '%'
-      && !i + 2 < len
-      && (let h1 = input.[!i + 1] and h2 = input.[!i + 2] in
-          let hex c =
-            match c with
-            | '0' .. '9' -> Some (Char.code c - Char.code '0')
-            | 'a' .. 'f' -> Some (Char.code c - Char.code 'a' + 10)
-            | 'A' .. 'F' -> Some (Char.code c - Char.code 'A' + 10)
-            | _ -> None
-          in
-          match (hex h1, hex h2) with
+  (** Convert a hex character ('0'-'9', 'a'-'f', 'A'-'F') to its integer
+      value (0-15), or None if not a valid hex digit. *)
+  let hex_digit = function
+    | '0' .. '9' as c -> Some (Char.code c - Char.code '0')
+    | 'a' .. 'f' as c -> Some (Char.code c - Char.code 'a' + 10)
+    | 'A' .. 'F' as c -> Some (Char.code c - Char.code 'A' + 10)
+    | _ -> None
+  in
+  (** Walk the string character by character. When we encounter a valid
+      "%XX" sequence that decodes to printable ASCII, emit the decoded
+      char and skip ahead 3 positions. Otherwise emit the literal char
+      and advance by 1. *)
+  let rec loop i =
+    if i >= len then ()
+    else
+      match
+        if input.[i] = '%' && i + 2 < len then
+          match (hex_digit input.[i + 1], hex_digit input.[i + 2]) with
           | Some v1, Some v2 ->
             let n = (v1 * 16) + v2 in
             if n >= 32 && n <= 126 then (
               Buffer.add_char buf (Char.chr n);
-              i := !i + 3;
-              true)
-            else false
-          | _ -> false)
-    then ()
-    else (
-      Buffer.add_char buf input.[!i];
-      incr i)
-  done;
+              Some (i + 3))
+            else None
+          | _ -> None
+        else None
+      with
+      | Some next -> loop next
+      | None ->
+        Buffer.add_char buf input.[i];
+        loop (i + 1)
+  in
+  loop 0;
   Buffer.contents buf
 
 let directory_of filepath =

@@ -33,18 +33,17 @@ let verify targets except =
     exit 1
   | Ok filepaths ->
     let filepaths = filter_except filepaths except in
-    let bad_links = ref [] in
-    List.iter
-      (fun filepath ->
-        match Parser.parse_file_for_links filepath with
-        | exception Sys_error msg ->
-          Printf.eprintf "error reading file: %s (%s)\n" filepath msg;
-          exit 1
-        | links ->
-          let missing = Resolver.find_missing_files links in
-          bad_links := !bad_links @ missing)
-      filepaths;
-    let exit_code = Reporter.report_broken_links !bad_links in
+    let bad_links =
+      List.fold_left
+        (fun acc filepath ->
+          match Parser.parse_file_for_links filepath with
+          | exception Sys_error msg ->
+            Printf.eprintf "error reading file: %s (%s)\n" filepath msg;
+            exit 1
+          | links -> acc @ Resolver.find_missing_files links)
+        [] filepaths
+    in
+    let exit_code = Reporter.report_broken_links bad_links in
     exit exit_code
 
 let targets_t =
