@@ -7,14 +7,13 @@ let report_broken_links (bad_links : Parser.link list) =
   | [] -> 0
   | _ ->
     List.iter
-      (fun (link : Parser.link) ->
-        Printf.eprintf "%s:%d: broken link -> %s\n" link.source_file link.line
-          link.path)
+      (fun { Parser.source_file; line; path } ->
+        Printf.eprintf "%s:%d: broken link -> %s\n" source_file line path)
       bad_links;
     let link_count = List.length bad_links in
     let file_count =
       bad_links
-      |> List.map (fun (l : Parser.link) -> l.source_file)
+      |> List.map (fun { Parser.source_file; _ } -> source_file)
       |> List.sort_uniq String.compare
       |> List.length
     in

@@ -1,7 +1,7 @@
 (* CLI entrypoint: argument parsing and main verification flow. *)
 open Link_verifier_lib
 
-let version = "0.3.0"
+let version = "0.3.1"
 
 let filter_except filepaths except_patterns =
   (* Compile user-provided regexes once; invalid patterns fail fast. *)
@@ -9,13 +9,13 @@ let filter_except filepaths except_patterns =
   | [] -> filepaths
   | _ ->
     let compiled =
-      List.filter_map
+      List.map
         (fun p ->
-          match Re.Perl.re p |> Re.compile |> Option.some with
+          match Re.compile (Re.Perl.re p) with
           | exception _ ->
             Printf.eprintf "invalid --except regex: %s\n" p;
             exit 1
-          | v -> v)
+          | re -> re)
         except_patterns
     in
     List.filter
@@ -34,14 +34,14 @@ let verify targets except =
   | Ok filepaths ->
     let filepaths = filter_except filepaths except in
     let bad_links =
-      List.fold_left
-        (fun acc filepath ->
+      List.concat_map
+        (fun filepath ->
           match Parser.parse_file_for_links filepath with
           | exception Sys_error msg ->
             Printf.eprintf "error reading file: %s (%s)\n" filepath msg;
             exit 1
-          | links -> acc @ Resolver.find_missing_files links)
-        [] filepaths
+          | links -> Resolver.find_missing_files links)
+        filepaths
     in
     let exit_code = Reporter.report_broken_links bad_links in
     exit exit_code
