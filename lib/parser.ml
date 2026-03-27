@@ -25,23 +25,48 @@ let should_check path =
   && not (String.starts_with ~prefix:"tel:" path)
   && not (path.[0] = '?')
 
-let parse_links_from_string ~source_file contents =
-  (* Line-by-line scanning keeps line numbers stable for error reporting. *)
-  let lines = String.split_on_char '\n' contents in
-  lines
-  |> List.mapi (fun idx line_content ->
-       let matches = Re.all link_re line_content in
-       List.filter_map
-         (fun group ->
-           match Re.Group.get_opt group 1 with
-           | Some raw_path ->
-             let path = strip_fragment raw_path in
-             if should_check path then Some { source_file; line = idx + 1; path }
-             else None
-           | None -> None)
-         matches)
-  |> List.concat
+let fence_re =
+  Re.compile (Re.Perl.re {|^(`{3,}|~{3,})|})
 
-let parse_file_for_links filepath =
+let inline_code_re =
+  Re.compile (Re.Perl.re {|`[^`]+`|})
+
+let strip_inline_code line =
+  Re.replace inline_code_re ~f:(fun _ -> "") line
+
+let parse_links_from_string ?(skip_code = false) ~source_file contents =
+  let lines = String.split_on_char '\n' contents in
+  let _in_fence, result =
+    List.fold_left
+      (fun (in_fence, acc) (idx, line_content) ->
+        if skip_code && Re.execp fence_re line_content then
+          (not in_fence, acc)
+        else if skip_code && in_fence then (in_fence, acc)
+        else
+          let effective_line =
+            if skip_code then strip_inline_code line_content
+            else line_content
+          in
+          let matches = Re.all link_re effective_line in
+          let links =
+            List.filter_map
+              (fun group ->
+                match Re.Group.get_opt group 1 with
+                | Some raw_path ->
+                  let path = strip_fragment raw_path in
+                  if should_check path then
+                    Some { source_file; line = idx + 1; path }
+                  else None
+                | None -> None)
+              matches
+          in
+          (in_fence, links :: acc))
+      (false, [])
+      (List.mapi (fun i l -> (i, l)) lines)
+  in
+  List.concat (List.rev result)
+
+let parse_file_for_links ?(skip_code = false) filepath =
   In_channel.with_open_text filepath (fun ic ->
-    In_channel.input_all ic |> parse_links_from_string ~source_file:filepath)
+    In_channel.input_all ic
+    |> parse_links_from_string ~skip_code ~source_file:filepath)

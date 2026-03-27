@@ -13,6 +13,7 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 - Skips external links (`http://`, `https://`), `mailto:`, `tel:`, bare anchors (`#heading`), and query-only links (`?tab=...`)
 - Strips `#fragment` suffixes before checking file paths
 - Exclude files or directories with `--except` / `-x` regex patterns (repeatable)
+- Skip links inside fenced code blocks and inline code with `--no-code-links`
 
 ## Install
 
@@ -55,6 +56,14 @@ Targets can be:
 ```sh
 ./link_verifier --help
 ./link_verifier --version
+```
+
+### Skipping code links
+
+Use `--no-code-links` to ignore links inside fenced code blocks and inline code:
+
+```sh
+./link_verifier docs/ --no-code-links
 ```
 
 ### Excluding files

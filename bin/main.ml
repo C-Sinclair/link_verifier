@@ -1,7 +1,7 @@
 (* CLI entrypoint: argument parsing and main verification flow. *)
 open Link_verifier_lib
 
-let version = "0.3.1"
+let version = "0.4.0"
 
 let filter_except filepaths except_patterns =
   (* Compile user-provided regexes once; invalid patterns fail fast. *)
@@ -22,8 +22,7 @@ let filter_except filepaths except_patterns =
       (fun path -> not (List.exists (fun re -> Re.execp re path) compiled))
       filepaths
 
-let verify targets except =
-  (* Expand targets into concrete files, then collect missing links. *)
+let verify targets except skip_code =
   match Target_expander.expand_targets targets with
   | Error (Target_expander.Target_not_found target) ->
     Printf.eprintf "target not found: %s\n" target;
@@ -36,7 +35,7 @@ let verify targets except =
     let bad_links =
       List.concat_map
         (fun filepath ->
-          match Parser.parse_file_for_links filepath with
+          match Parser.parse_file_for_links ~skip_code filepath with
           | exception Sys_error msg ->
             Printf.eprintf "error reading file: %s (%s)\n" filepath msg;
             exit 1
@@ -55,12 +54,16 @@ let except_t =
   Cmdliner.Arg.(
     value & opt_all string [] & info [ "x"; "except" ] ~docv:"PATTERN" ~doc)
 
+let no_code_links_t =
+  let doc = "Skip links inside fenced code blocks and inline code." in
+  Cmdliner.Arg.(value & flag & info [ "no-code-links" ] ~doc)
+
 let cmd =
   let doc = "Verify markdown-style local links" in
   let info = Cmdliner.Cmd.info "link_verifier" ~version ~doc in
   let term =
     Cmdliner.Term.(
-      const (fun targets except ->
+      const (fun targets except no_code_links ->
         match targets with
         | [] ->
           Printf.eprintf
@@ -71,11 +74,14 @@ let cmd =
             \  -h, --help              show this help\n\
             \  -v, --version           show version\n\
             \  -x, --except <pattern>  exclude files matching regex \
-             (repeatable)\n";
+             (repeatable)\n\
+            \  --no-code-links         skip links inside code blocks and \
+             inline code\n";
           exit 1
-        | _ -> verify targets except)
+        | _ -> verify targets except no_code_links)
       $ targets_t
-      $ except_t)
+      $ except_t
+      $ no_code_links_t)
   in
   Cmdliner.Cmd.v info term
 

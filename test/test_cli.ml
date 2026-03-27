@@ -58,7 +58,7 @@ let test_help_flag () =
 let test_version_flag () =
   let r = run_cli [ "--version" ] in
   Alcotest.(check int) "exit 0" 0 r.exit_code;
-  Alcotest.(check bool) "has version" true (contains r.stdout "0.3.0")
+  Alcotest.(check bool) "has version" true (contains r.stdout "0.4.0")
 
 let test_multiple_file_targets () =
   with_tmp_dir (fun dir ->
@@ -167,6 +167,26 @@ let test_except_all_excluded () =
     let r = run_cli [ Filename.concat dir "only.md"; "-x"; "only" ] in
     Alcotest.(check int) "exit 0" 0 r.exit_code)
 
+let test_no_code_links_flag () =
+  with_tmp_dir (fun dir ->
+    write_file
+      (Filename.concat dir "code.md")
+      "```\n[link](missing.md)\n```\n`[inline](also-missing.md)`";
+    let r = run_cli [ Filename.concat dir "code.md"; "--no-code-links" ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
+let test_no_code_links_still_checks_outside () =
+  with_tmp_dir (fun dir ->
+    write_file
+      (Filename.concat dir "mixed.md")
+      "```\n[link](code-only.md)\n```\n[real](outside-code.md)";
+    let r = run_cli [ Filename.concat dir "mixed.md"; "--no-code-links" ] in
+    Alcotest.(check int) "exit 2" 2 r.exit_code;
+    Alcotest.(check bool) "reports real link" true
+      (contains r.stderr "outside-code.md");
+    Alcotest.(check bool) "not code link" false
+      (contains r.stderr "code-only.md"))
+
 let test_except_regex () =
   with_tmp_dir (fun dir ->
     write_file (Filename.concat dir "vendor/lib.md") "[x](missing.md)";
@@ -199,5 +219,9 @@ let () =
           Alcotest.test_case "except all excluded" `Quick
             test_except_all_excluded;
           Alcotest.test_case "except regex" `Quick test_except_regex;
+          Alcotest.test_case "no-code-links flag" `Quick
+            test_no_code_links_flag;
+          Alcotest.test_case "no-code-links checks outside" `Quick
+            test_no_code_links_still_checks_outside;
         ] );
     ]

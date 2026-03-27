@@ -103,6 +103,45 @@ let test_ignores_bare_anchor () =
   in
   Alcotest.(check int) "no links" 0 (List.length links)
 
+let test_skips_fenced_code_block () =
+  let links =
+    Parser.parse_links_from_string ~skip_code:true ~source_file:"file.md"
+      "```\n[link](./inside.md)\n```\n[link](./outside.md)"
+  in
+  Alcotest.(check int) "one link" 1 (List.length links);
+  Alcotest.(check string) "path" "./outside.md" (List.hd links).path
+
+let test_skips_fenced_code_block_with_lang () =
+  let links =
+    Parser.parse_links_from_string ~skip_code:true ~source_file:"file.md"
+      "```markdown\n[link](./inside.md)\n```\n[link](./outside.md)"
+  in
+  Alcotest.(check int) "one link" 1 (List.length links);
+  Alcotest.(check string) "path" "./outside.md" (List.hd links).path
+
+let test_skips_inline_code () =
+  let links =
+    Parser.parse_links_from_string ~skip_code:true ~source_file:"file.md"
+      "see `[link](./inline.md)` and [real](./real.md)"
+  in
+  Alcotest.(check int) "one link" 1 (List.length links);
+  Alcotest.(check string) "path" "./real.md" (List.hd links).path
+
+let test_skip_code_default_off () =
+  let links =
+    Parser.parse_links_from_string ~source_file:"file.md"
+      "```\n[link](./inside.md)\n```"
+  in
+  Alcotest.(check int) "one link" 1 (List.length links)
+
+let test_skips_tilde_fenced_code_block () =
+  let links =
+    Parser.parse_links_from_string ~skip_code:true ~source_file:"file.md"
+      "~~~\n[link](./inside.md)\n~~~\n[link](./outside.md)"
+  in
+  Alcotest.(check int) "one link" 1 (List.length links);
+  Alcotest.(check string) "path" "./outside.md" (List.hd links).path
+
 let test_percent_decode_basic () =
   Alcotest.(check string)
     "decoded" "Scope Doc.md"
@@ -143,6 +182,15 @@ let () =
           Alcotest.test_case "ignores tel" `Quick test_ignores_tel;
           Alcotest.test_case "strips fragment" `Quick test_strips_fragment;
           Alcotest.test_case "bare anchor" `Quick test_ignores_bare_anchor;
+          Alcotest.test_case "skips fenced code block" `Quick
+            test_skips_fenced_code_block;
+          Alcotest.test_case "skips fenced code with lang" `Quick
+            test_skips_fenced_code_block_with_lang;
+          Alcotest.test_case "skips inline code" `Quick test_skips_inline_code;
+          Alcotest.test_case "skip_code default off" `Quick
+            test_skip_code_default_off;
+          Alcotest.test_case "skips tilde fence" `Quick
+            test_skips_tilde_fenced_code_block;
         ] );
       ( "percent_decode",
         [
