@@ -157,6 +157,21 @@ let test_percent_decode_parens () =
     "decoded" "file(name).md"
     (Resolver.percent_decode "file%28name%29.md")
 
+let test_percent_decode_utf8_en_dash () =
+  Alcotest.(check string)
+    "decoded" "Plan \xe2\x80\x93 Draft.md"
+    (Resolver.percent_decode "Plan%20%E2%80%93%20Draft.md")
+
+let test_percent_decode_lowercase_hex () =
+  Alcotest.(check string)
+    "decoded" "Plan \xe2\x80\x93 Draft.md"
+    (Resolver.percent_decode "Plan%20%e2%80%93%20Draft.md")
+
+let test_percent_decode_malformed () =
+  Alcotest.(check string)
+    "decoded" "100%25 and %zz and %"
+    (Resolver.percent_decode "100%2525 and %zz and %")
+
 let test_percent_decode_no_encoding () =
   Alcotest.(check string)
     "decoded" "plain-file.md"
@@ -198,5 +213,10 @@ let () =
           Alcotest.test_case "multiple" `Quick test_percent_decode_multiple;
           Alcotest.test_case "parens" `Quick test_percent_decode_parens;
           Alcotest.test_case "no encoding" `Quick test_percent_decode_no_encoding;
+          Alcotest.test_case "utf8 en dash" `Quick
+            test_percent_decode_utf8_en_dash;
+          Alcotest.test_case "lowercase hex" `Quick
+            test_percent_decode_lowercase_hex;
+          Alcotest.test_case "malformed" `Quick test_percent_decode_malformed;
         ] );
     ]

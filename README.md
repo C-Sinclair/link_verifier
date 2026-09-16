@@ -8,7 +8,7 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 
 - Resolves relative links from the **source file's directory**, not the working directory
 - Handles balanced parentheses in filenames, e.g. `[sheet](Onboarding Sheet (1).xlsx)`
-- Decodes percent-encoded URLs, e.g. `Scope%20Doc.md` resolves to `Scope Doc.md`
+- Decodes percent-encoded URLs, e.g. `Scope%20Doc.md` resolves to `Scope Doc.md`, and `Plan%20%E2%80%93%20Draft.md` to `Plan – Draft.md`. A link whose filename literally contains `%` is also checked undecoded
 - Recognises directory links like `[assessment](assessment/)`
 - Skips external links (`http://`, `https://`), `mailto:`, `tel:`, bare anchors (`#heading`), and query-only links (`?tab=...`)
 - Strips `#fragment` suffixes before checking file paths

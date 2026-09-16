@@ -187,6 +187,23 @@ let test_no_code_links_still_checks_outside () =
     Alcotest.(check bool) "not code link" false
       (contains r.stderr "code-only.md"))
 
+let test_percent_encoded_utf8_target () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "Plan \xe2\x80\x93 Draft.md") "ok";
+    write_file (Filename.concat dir "Scope Doc.md") "ok";
+    write_file
+      (Filename.concat dir "index.md")
+      "[a](Plan%20%E2%80%93%20Draft.md)\n[b](Scope%20Doc.md)";
+    let r = run_cli [ Filename.concat dir "index.md" ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
+let test_literal_percent_filename () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "100%25.md") "ok";
+    write_file (Filename.concat dir "index.md") "[a](100%25.md)";
+    let r = run_cli [ Filename.concat dir "index.md" ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
 let test_except_regex () =
   with_tmp_dir (fun dir ->
     write_file (Filename.concat dir "vendor/lib.md") "[x](missing.md)";
@@ -219,6 +236,10 @@ let () =
           Alcotest.test_case "except all excluded" `Quick
             test_except_all_excluded;
           Alcotest.test_case "except regex" `Quick test_except_regex;
+          Alcotest.test_case "percent-encoded utf8 target" `Quick
+            test_percent_encoded_utf8_target;
+          Alcotest.test_case "literal percent filename" `Quick
+            test_literal_percent_filename;
           Alcotest.test_case "no-code-links flag" `Quick
             test_no_code_links_flag;
           Alcotest.test_case "no-code-links checks outside" `Quick

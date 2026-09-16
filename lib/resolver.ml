@@ -1,7 +1,7 @@
 (* Resolve and validate filesystem paths for parsed links. *)
 (** Decode percent-encoded sequences in a URL path (e.g. "%20" -> " ").
-    Only decodes printable ASCII (codes 32-126); non-printable or malformed
-    sequences are left as-is. *)
+    Decodes any byte value, so multi-byte UTF-8 sequences such as "%E2%80%93"
+    (en dash) round-trip correctly. Malformed sequences are left as-is. *)
 let percent_decode input =
   let len = String.length input in
   let buf = Buffer.create len in
@@ -14,9 +14,8 @@ let percent_decode input =
     | _ -> None
   in
   (* Walk the string character by character. When we encounter a valid
-     "%XX" sequence that decodes to printable ASCII, emit the decoded
-     char and skip ahead 3 positions. Otherwise emit the literal char
-     and advance by 1. *)
+     "%XX" sequence, emit the decoded byte and skip ahead 3 positions.
+     Otherwise emit the literal char and advance by 1. *)
   let rec loop i =
     if i >= len then ()
     else
@@ -25,10 +24,11 @@ let percent_decode input =
           match (hex_digit input.[i + 1], hex_digit input.[i + 2]) with
           | Some v1, Some v2 ->
             let n = (v1 * 16) + v2 in
-            if n >= 32 && n <= 126 then (
+            (* A NUL byte cannot appear in a filename, so leave it literal. *)
+            if n = 0 then None
+            else (
               Buffer.add_char buf (Char.chr n);
               Some (i + 3))
-            else None
           | _ -> None
         else None
       with
@@ -46,9 +46,17 @@ let directory_of filepath =
 
 let resolve_path ~source_file link_path =
   (* Paths resolve relative to the source file's directory. *)
+  if link_path <> "" && link_path.[0] = '/' then link_path
+  else Filename.concat (directory_of source_file) link_path
+
+(* Candidate paths to try, most likely first: a link may be percent-encoded,
+   or may name a file that literally contains a '%'. *)
+let candidate_paths ~source_file link_path =
   let decoded = percent_decode link_path in
-  if decoded <> "" && decoded.[0] = '/' then decoded
-  else Filename.concat (directory_of source_file) decoded
+  let paths =
+    if decoded = link_path then [ link_path ] else [ decoded; link_path ]
+  in
+  List.map (resolve_path ~source_file) paths
 
 let path_exists path =
   try
@@ -59,6 +67,6 @@ let path_exists path =
 let find_missing_files links =
   List.filter
     (fun (link : Parser.link) ->
-      let resolved = resolve_path ~source_file:link.source_file link.path in
-      not (path_exists resolved))
+      candidate_paths ~source_file:link.source_file link.path
+      |> List.for_all (fun p -> not (path_exists p)))
     links
