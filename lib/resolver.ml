@@ -70,3 +70,39 @@ let find_missing_files links =
       candidate_paths ~source_file:link.source_file link.path
       |> List.for_all (fun p -> not (path_exists p)))
     links
+
+(* Collapse "." and ".." segments so that two links naming the same file
+   produce the same string. Works on paths that do not exist, which realpath
+   cannot do, and which the backlink graph needs for missing targets. *)
+let normalize_path path =
+  let absolute = path <> "" && path.[0] = '/' in
+  let segments = String.split_on_char '/' path in
+  let collapse acc segment =
+    match segment with
+    | "" | "." -> acc
+    | ".." -> (
+      match acc with
+      | [] -> if absolute then [] else [ ".." ]
+      | ".." :: _ -> ".." :: acc
+      | _ :: rest -> rest)
+    | s -> s :: acc
+  in
+  let body = List.fold_left collapse [] segments |> List.rev in
+  match (absolute, body) with
+  | true, _ -> "/" ^ String.concat "/" body
+  | false, [] -> "."
+  | false, _ -> String.concat "/" body
+
+(* The canonical key for a link target: the candidate that exists on disk if
+   there is one, so a filename containing a literal '%' keys the same way it
+   resolves, and the decoded candidate otherwise. *)
+let canonical_target ~source_file link_path =
+  let candidates = candidate_paths ~source_file link_path in
+  let chosen =
+    match List.find_opt path_exists candidates with
+    | Some p -> p
+    | None -> ( match candidates with p :: _ -> p | [] -> link_path)
+  in
+  normalize_path chosen
+
+let canonical_file filepath = normalize_path filepath

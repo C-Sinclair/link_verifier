@@ -23,3 +23,25 @@ let report_broken_links (bad_links : Parser.link list) =
       (pluralize file_count "file" "files");
     (* Exit code 2 signals broken links (per CLI contract). *)
     2
+
+let report_missing_backlinks (missing : Backlinks.missing list) =
+  match missing with
+  | [] -> 0
+  | _ ->
+    List.iter
+      (fun { Backlinks.link; target } ->
+        Printf.eprintf "%s:%d: no backlink from %s\n" link.Parser.source_file
+          link.Parser.line target)
+      missing;
+    let count = List.length missing in
+    let file_count =
+      missing
+      |> List.map (fun { Backlinks.link; _ } -> link.Parser.source_file)
+      |> List.sort_uniq String.compare
+      |> List.length
+    in
+    Printf.eprintf "\n%d missing %s in %d %s\n" count
+      (pluralize count "backlink" "backlinks")
+      file_count
+      (pluralize file_count "file" "files");
+    2

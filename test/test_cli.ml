@@ -58,7 +58,7 @@ let test_help_flag () =
 let test_version_flag () =
   let r = run_cli [ "--version" ] in
   Alcotest.(check int) "exit 0" 0 r.exit_code;
-  Alcotest.(check bool) "has version" true (contains r.stdout "0.4.0")
+  Alcotest.(check bool) "has version" true (contains r.stdout "0.5.0")
 
 let test_multiple_file_targets () =
   with_tmp_dir (fun dir ->
@@ -204,6 +204,55 @@ let test_literal_percent_filename () =
     let r = run_cli [ Filename.concat dir "index.md" ] in
     Alcotest.(check int) "exit 0" 0 r.exit_code)
 
+let test_assert_backlinks_reciprocal () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "a.md") "[to b](b.md)";
+    write_file (Filename.concat dir "b.md") "[to a](a.md)";
+    let r = run_cli [ dir; "--assert-backlinks" ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
+let test_assert_backlinks_one_way () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "a.md") "[to b](b.md)";
+    write_file (Filename.concat dir "b.md") "no links here";
+    let r = run_cli [ dir; "--assert-backlinks" ] in
+    Alcotest.(check int) "exit 2" 2 r.exit_code;
+    Alcotest.(check bool) "names target" true (contains r.stderr "no backlink"))
+
+let test_assert_backlinks_off_by_default () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "a.md") "[to b](b.md)";
+    write_file (Filename.concat dir "b.md") "no links here";
+    let r = run_cli [ dir ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
+(* A fragment on the reciprocal link still counts, since the parser strips it
+   before the graph is built. *)
+let test_assert_backlinks_fragment () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "a.md") "[to b](b.md#section)";
+    write_file (Filename.concat dir "b.md") "[to a](a.md#top)";
+    let r = run_cli [ dir; "--assert-backlinks" ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
+(* The reciprocal link crosses a directory boundary with "..", which only
+   joins in the graph if target keys are normalized. *)
+let test_assert_backlinks_across_dirs () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "a.md") "[to b](sub/b.md)";
+    write_file (Filename.concat dir "sub/b.md") "[to a](../a.md)";
+    let r = run_cli [ dir; "--assert-backlinks" ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
+(* A link out of the scanned set is never judged, because the tool has not
+   parsed the target and cannot know its links. *)
+let test_assert_backlinks_ignores_unscanned () =
+  with_tmp_dir (fun dir ->
+    write_file (Filename.concat dir "outside.md") "no links here";
+    write_file (Filename.concat dir "docs/a.md") "[out](../outside.md)";
+    let r = run_cli [ Filename.concat dir "docs"; "--assert-backlinks" ] in
+    Alcotest.(check int) "exit 0" 0 r.exit_code)
+
 let test_except_regex () =
   with_tmp_dir (fun dir ->
     write_file (Filename.concat dir "vendor/lib.md") "[x](missing.md)";
@@ -236,6 +285,18 @@ let () =
           Alcotest.test_case "except all excluded" `Quick
             test_except_all_excluded;
           Alcotest.test_case "except regex" `Quick test_except_regex;
+          Alcotest.test_case "backlinks reciprocal" `Quick
+            test_assert_backlinks_reciprocal;
+          Alcotest.test_case "backlinks one-way" `Quick
+            test_assert_backlinks_one_way;
+          Alcotest.test_case "backlinks off by default" `Quick
+            test_assert_backlinks_off_by_default;
+          Alcotest.test_case "backlinks fragment" `Quick
+            test_assert_backlinks_fragment;
+          Alcotest.test_case "backlinks across dirs" `Quick
+            test_assert_backlinks_across_dirs;
+          Alcotest.test_case "backlinks ignores unscanned" `Quick
+            test_assert_backlinks_ignores_unscanned;
           Alcotest.test_case "percent-encoded utf8 target" `Quick
             test_percent_encoded_utf8_target;
           Alcotest.test_case "literal percent filename" `Quick

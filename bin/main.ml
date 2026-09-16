@@ -1,7 +1,7 @@
 (* CLI entrypoint: argument parsing and main verification flow. *)
 open Link_verifier_lib
 
-let version = "0.4.0"
+let version = "0.5.0"
 
 let filter_except filepaths except_patterns =
   (* Compile user-provided regexes once; invalid patterns fail fast. *)
@@ -22,7 +22,7 @@ let filter_except filepaths except_patterns =
       (fun path -> not (List.exists (fun re -> Re.execp re path) compiled))
       filepaths
 
-let verify targets except skip_code =
+let verify targets except skip_code assert_backlinks =
   match Target_expander.expand_targets targets with
   | Error (Target_expander.Target_not_found target) ->
     Printf.eprintf "target not found: %s\n" target;
@@ -32,18 +32,28 @@ let verify targets except skip_code =
     exit 1
   | Ok filepaths ->
     let filepaths = filter_except filepaths except in
-    let bad_links =
-      List.concat_map
+    let links_by_file =
+      List.map
         (fun filepath ->
           match Parser.parse_file_for_links ~skip_code filepath with
           | exception Sys_error msg ->
             Printf.eprintf "error reading file: %s (%s)\n" filepath msg;
             exit 1
-          | links -> Resolver.find_missing_files links)
+          | links -> (filepath, links))
         filepaths
     in
-    let exit_code = Reporter.report_broken_links bad_links in
-    exit exit_code
+    let bad_links =
+      List.concat_map
+        (fun (_, links) -> Resolver.find_missing_files links)
+        links_by_file
+    in
+    let broken_code = Reporter.report_broken_links bad_links in
+    let backlink_code =
+      if assert_backlinks then
+        Reporter.report_missing_backlinks (Backlinks.find_missing links_by_file)
+      else 0
+    in
+    exit (max broken_code backlink_code)
 
 let targets_t =
   let doc = "Files, directories, or glob patterns to check." in
@@ -58,12 +68,19 @@ let no_code_links_t =
   let doc = "Skip links inside fenced code blocks and inline code." in
   Cmdliner.Arg.(value & flag & info [ "no-code-links" ] ~doc)
 
+let assert_backlinks_t =
+  let doc =
+    "Require every link between two scanned files to be reciprocated by a \
+     link back."
+  in
+  Cmdliner.Arg.(value & flag & info [ "assert-backlinks" ] ~doc)
+
 let cmd =
   let doc = "Verify markdown-style local links" in
   let info = Cmdliner.Cmd.info "link_verifier" ~version ~doc in
   let term =
     Cmdliner.Term.(
-      const (fun targets except no_code_links ->
+      const (fun targets except no_code_links assert_backlinks ->
         match targets with
         | [] ->
           Printf.eprintf
@@ -76,12 +93,15 @@ let cmd =
             \  -x, --except <pattern>  exclude files matching regex \
              (repeatable)\n\
             \  --no-code-links         skip links inside code blocks and \
-             inline code\n";
+             inline code\n\
+            \  --assert-backlinks      require reciprocal links between \
+             scanned files\n";
           exit 1
-        | _ -> verify targets except no_code_links)
+        | _ -> verify targets except no_code_links assert_backlinks)
       $ targets_t
       $ except_t
-      $ no_code_links_t)
+      $ no_code_links_t
+      $ assert_backlinks_t)
   in
   Cmdliner.Cmd.v info term
 

@@ -14,6 +14,7 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 - Strips `#fragment` suffixes before checking file paths
 - Exclude files or directories with `--except` / `-x` regex patterns (repeatable)
 - Skip links inside fenced code blocks and inline code with `--no-code-links`
+- Require reciprocal links with `--assert-backlinks`, so traversal works in both directions
 
 ## Install
 
@@ -65,6 +66,20 @@ Use `--no-code-links` to ignore links inside fenced code blocks and inline code:
 ```sh
 ./link_verifier docs/ --no-code-links
 ```
+
+### Asserting backlinks
+
+Use `--assert-backlinks` to require that a link is reciprocated. If `a.md` links to `b.md`, then `b.md` must link back to `a.md`:
+
+```sh
+./link_verifier docs/ --assert-backlinks
+```
+
+A missing backlink is reported as `a.md:3: no backlink from b.md` and exits 2, the same as a broken link. The flag is off by default, because one-way links are normal in most documentation.
+
+Only edges where both files are in the scanned set are judged. If `docs/a.md` links to `../README.md` and you scan only `docs/`, the tool has never parsed `README.md` and says nothing about it. Widen the target to include both ends.
+
+A `#fragment` is stripped before comparison, and `.`/`..` segments are collapsed, so `../a.md` from `docs/sub/b.md` counts as a backlink to `docs/a.md`.
 
 ### Excluding files
 

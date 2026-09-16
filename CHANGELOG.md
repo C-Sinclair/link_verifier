@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Add `--assert-backlinks` to require that a link between two scanned files is reciprocated by a link back, so bidirectional traversal cannot dead-end. Off by default; a missing backlink exits 2 like a broken link.
+- Add `Resolver.normalize_path`, which collapses `.` and `..` segments so two links naming the same file compare equal.
+
 ## 0.4.0
 
 - Decode percent-encoded bytes above 126, so links to files with en dashes or other non-ASCII characters (`%E2%80%93`) resolve instead of reporting a false positive.
