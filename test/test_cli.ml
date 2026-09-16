@@ -58,7 +58,7 @@ let test_help_flag () =
 let test_version_flag () =
   let r = run_cli [ "--version" ] in
   Alcotest.(check int) "exit 0" 0 r.exit_code;
-  Alcotest.(check bool) "has version" true (contains r.stdout "0.5.0")
+  Alcotest.(check bool) "has version" true (contains r.stdout "0.5.1")
 
 let test_multiple_file_targets () =
   with_tmp_dir (fun dir ->

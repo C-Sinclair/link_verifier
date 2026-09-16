@@ -10,7 +10,8 @@ If a scanned file contains markdown-style links in docs or markdown-style commen
 - Handles balanced parentheses in filenames, e.g. `[sheet](Onboarding Sheet (1).xlsx)`
 - Decodes percent-encoded URLs, e.g. `Scope%20Doc.md` resolves to `Scope Doc.md`, and `Plan%20%E2%80%93%20Draft.md` to `Plan – Draft.md`. A link whose filename literally contains `%` is also checked undecoded
 - Recognises directory links like `[assessment](assessment/)`
-- Skips external links (`http://`, `https://`), `mailto:`, `tel:`, bare anchors (`#heading`), and query-only links (`?tab=...`)
+- Skips any link carrying a URI scheme, so `http://`, `https://`, `mailto:`, `tel:` and application schemes such as `obsidian://` or `shortcutapp://` are left alone, along with bare anchors (`#heading`) and query-only links (`?tab=...`)
+- Treats a colon inside a filename as part of the path, so `Meeting: notes.md` and `C:/Users/a.md` are still checked
 - Strips `#fragment` suffixes before checking file paths
 - Exclude files or directories with `--except` / `-x` regex patterns (repeatable)
 - Skip links inside fenced code blocks and inline code with `--no-code-links`
@@ -93,7 +94,7 @@ Use `-x` / `--except` to skip files matching a regex pattern. The flag can be re
 
 - `0`: all links valid
 - `1`: usage/target/read error
-- `2`: broken links found
+- `2`: broken links found, or missing backlinks when `--assert-backlinks` is set
 
 ## Benchmark
 

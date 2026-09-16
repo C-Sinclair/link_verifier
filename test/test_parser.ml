@@ -142,6 +142,32 @@ let test_skips_tilde_fenced_code_block () =
   Alcotest.(check int) "one link" 1 (List.length links);
   Alcotest.(check string) "path" "./outside.md" (List.hd links).path
 
+let unchecked_path input =
+  Parser.parse_links_from_string ~source_file:"file.md"
+    (Printf.sprintf "[x](%s)" input)
+
+let test_ignores_custom_uri_scheme () =
+  Alcotest.(check int) "shortcutapp" 0
+    (List.length (unchecked_path "shortcutapp://members/61ddbf77"));
+  Alcotest.(check int) "obsidian" 0
+    (List.length (unchecked_path "obsidian://open?vault=notes"));
+  Alcotest.(check int) "vscode" 0
+    (List.length (unchecked_path "vscode://file/tmp/a.md"));
+  Alcotest.(check int) "file" 0 (List.length (unchecked_path "file:///tmp/a.md"));
+  Alcotest.(check int) "x-hyphen scheme" 0
+    (List.length (unchecked_path "x-github-client://openRepo"))
+
+let test_uppercase_scheme_ignored () =
+  Alcotest.(check int) "HTTPS" 0 (List.length (unchecked_path "HTTPS://x.com"))
+
+(* A colon in a filename is not a scheme. These must still be checked, or a
+   broken link goes unreported. *)
+let test_colon_in_filename_still_checked () =
+  Alcotest.(check int) "space after colon" 1
+    (List.length (unchecked_path "Meeting: notes.md"));
+  Alcotest.(check int) "drive letter" 1
+    (List.length (unchecked_path "C:/Users/a.md"))
+
 let test_percent_decode_basic () =
   Alcotest.(check string)
     "decoded" "Scope Doc.md"
@@ -197,6 +223,12 @@ let () =
           Alcotest.test_case "ignores tel" `Quick test_ignores_tel;
           Alcotest.test_case "strips fragment" `Quick test_strips_fragment;
           Alcotest.test_case "bare anchor" `Quick test_ignores_bare_anchor;
+          Alcotest.test_case "custom uri scheme" `Quick
+            test_ignores_custom_uri_scheme;
+          Alcotest.test_case "uppercase scheme" `Quick
+            test_uppercase_scheme_ignored;
+          Alcotest.test_case "colon in filename" `Quick
+            test_colon_in_filename_still_checked;
           Alcotest.test_case "skips fenced code block" `Quick
             test_skips_fenced_code_block;
           Alcotest.test_case "skips fenced code with lang" `Quick

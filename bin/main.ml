@@ -1,7 +1,7 @@
 (* CLI entrypoint: argument parsing and main verification flow. *)
 open Link_verifier_lib
 
-let version = "0.5.0"
+let version = "0.5.1"
 
 let filter_except filepaths except_patterns =
   (* Compile user-provided regexes once; invalid patterns fail fast. *)

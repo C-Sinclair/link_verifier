@@ -9,9 +9,16 @@ let link_re =
   (* Capture markdown link targets, allowing balanced parentheses inside. *)
   Re.compile (Re.Perl.re {|\[.*?\]\(([^()]*(?:\([^()]*\)[^()]*)*)\)|})
 
-let is_external path =
-  String.starts_with ~prefix:"https://" path
-  || String.starts_with ~prefix:"http://" path
+(* Any URI scheme names a resource this tool cannot check on the filesystem,
+   whether it is http, mailto, or an application scheme such as
+   shortcutapp://. The scheme grammar is RFC 3986 section 3.1, with two
+   restrictions that keep filenames containing a colon out: a scheme is at
+   least two characters, so a Windows drive letter stays a path, and the
+   colon is not followed by a space, so "Meeting: notes.md" stays a path. *)
+let uri_scheme_re =
+  Re.compile (Re.Perl.re {|^[A-Za-z][A-Za-z0-9+.-]+:[^ ]|})
+
+let has_uri_scheme path = Re.execp uri_scheme_re path
 
 let strip_fragment path =
   match String.index_opt path '#' with
@@ -19,11 +26,7 @@ let strip_fragment path =
   | None -> path
 
 let should_check path =
-  path <> ""
-  && not (is_external path)
-  && not (String.starts_with ~prefix:"mailto:" path)
-  && not (String.starts_with ~prefix:"tel:" path)
-  && not (path.[0] = '?')
+  path <> "" && (not (has_uri_scheme path)) && path.[0] <> '?'
 
 let fence_re =
   Re.compile (Re.Perl.re {|^(`{3,}|~{3,})|})

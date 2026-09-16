@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+- Skip links carrying any URI scheme, not just `http`, `https`, `mailto` and `tel`. An application scheme such as `shortcutapp://members/...` or `obsidian://open?vault=notes` was treated as a relative path and reported as a broken link.
+- Keep checking a path whose filename contains a colon, such as `Meeting: notes.md` or `C:/Users/a.md`.
+
 ## 0.5.0
 
 - Add `--assert-backlinks` to require that a link between two scanned files is reciprocated by a link back, so bidirectional traversal cannot dead-end. Off by default; a missing backlink exits 2 like a broken link.
